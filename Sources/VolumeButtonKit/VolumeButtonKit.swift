@@ -144,13 +144,13 @@ public final class VolumeButtonListener {
     private func handleSystemVolumeDidChange(_ notification: Notification) {
         guard shouldProcessVolumeChange(notification) else { return }
         let currentVolume = AVAudioSession.sharedInstance().outputVolume
-        guard let direction = volumeDirection(current: currentVolume, previous: previousVolume) else { return }
-        recordPress(direction: direction)
+        guard let button = volumeDirection(current: currentVolume, previous: previousVolume) else { return }
+        recordPress(button: button)
         releaseWorkItem?.cancel()
-        let directionForRelease = direction
+        let buttonForRelease = button
         let workItem = DispatchWorkItem { [weak self] in
             guard let self, self.isListening else { return }
-            self.volumeButtonReleased?(directionForRelease)
+            self.volumeButtonReleased?(buttonForRelease)
             self.setSystemVolume(self.previousVolume)
         }
         releaseWorkItem = workItem
@@ -178,12 +178,12 @@ public final class VolumeButtonListener {
         volumeSlider?.setValue(volume, animated: false)
     }
 
-    private func recordPress(direction: VolumeButtonDirection) {
+    private func recordPress(button: VolumeButtonDirection) {
         let now = Date()
         guard now.timeIntervalSince(lastPressTime) >= debounceInterval else { return }
         lastPressTime = now
         DispatchQueue.main.async { [weak self] in
-            self?.volumeButtonPressed?(direction)
+            self?.volumeButtonPressed?(button)
         }
     }
 }

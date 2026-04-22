@@ -38,11 +38,11 @@ import VolumeButtonKit
 
 let listener = VolumeButtonListener()
 listener.showsVolumeUi = false
-listener.volumeButtonPressed = { direction in
-    print("Pressed:", direction == .up ? "up" : "down")
+listener.volumeButtonPressed = { button in
+    print("Pressed:", button == .up ? "up" : "down")
 }
-listener.volumeButtonReleased = { direction in
-    print("Released:", direction == .up ? "up" : "down")
+listener.volumeButtonReleased = { button in
+    print("Released:", button == .up ? "up" : "down")
 }
 
 try listener.startListening()
