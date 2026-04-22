@@ -11,9 +11,14 @@ public enum VolumeButtonKitError: Error {
     case noKeyWindow
 }
 
+public enum VolumeButtonDirection {
+    case up
+    case down
+}
+
 public final class VolumeButtonListener {
-    public var onVolumeButtonPressed: ((Bool) -> Void)?
-    public var onVolumeButtonReleased: ((Bool) -> Void)?
+    public var volumeButtonPressed: ((VolumeButtonDirection) -> Void)?
+    public var volumeButtonReleased: ((VolumeButtonDirection) -> Void)?
 
     public var showsVolumeUi = false {
         didSet {
@@ -139,13 +144,13 @@ public final class VolumeButtonListener {
     private func handleSystemVolumeDidChange(_ notification: Notification) {
         guard shouldProcessVolumeChange(notification) else { return }
         let currentVolume = AVAudioSession.sharedInstance().outputVolume
-        guard let isUp = volumeDirection(current: currentVolume, previous: previousVolume) else { return }
-        recordPress(isUp: isUp)
+        guard let direction = volumeDirection(current: currentVolume, previous: previousVolume) else { return }
+        recordPress(direction: direction)
         releaseWorkItem?.cancel()
-        let isUpForRelease = isUp
+        let directionForRelease = direction
         let workItem = DispatchWorkItem { [weak self] in
             guard let self, self.isListening else { return }
-            self.onVolumeButtonReleased?(isUpForRelease)
+            self.volumeButtonReleased?(directionForRelease)
             self.setSystemVolume(self.previousVolume)
         }
         releaseWorkItem = workItem
@@ -160,11 +165,11 @@ public final class VolumeButtonListener {
         return true
     }
 
-    private func volumeDirection(current: Float, previous: Float) -> Bool? {
-        if current > previous { return true }
-        if current < previous { return false }
-        if current >= 1.0 { return true }
-        if current <= 0 { return false }
+    private func volumeDirection(current: Float, previous: Float) -> VolumeButtonDirection? {
+        if current > previous { return .up }
+        if current < previous { return .down }
+        if current >= 1.0 { return .up }
+        if current <= 0 { return .down }
         return nil
     }
 
@@ -173,12 +178,12 @@ public final class VolumeButtonListener {
         volumeSlider?.setValue(volume, animated: false)
     }
 
-    private func recordPress(isUp: Bool) {
+    private func recordPress(direction: VolumeButtonDirection) {
         let now = Date()
         guard now.timeIntervalSince(lastPressTime) >= debounceInterval else { return }
         lastPressTime = now
         DispatchQueue.main.async { [weak self] in
-            self?.onVolumeButtonPressed?(isUp)
+            self?.volumeButtonPressed?(direction)
         }
     }
 }

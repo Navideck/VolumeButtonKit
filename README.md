@@ -27,7 +27,7 @@ Or in `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Navideck/VolumeButtonKit.git", from: "0.1.0")
+    .package(url: "https://github.com/Navideck/VolumeButtonKit.git", branch: "main")
 ]
 ```
 
@@ -38,11 +38,11 @@ import VolumeButtonKit
 
 let listener = VolumeButtonListener()
 listener.showsVolumeUi = false
-listener.onVolumeButtonPressed = { isUp in
-    print("Pressed:", isUp ? "up" : "down")
+listener.volumeButtonPressed = { direction in
+    print("Pressed:", direction == .up ? "up" : "down")
 }
-listener.onVolumeButtonReleased = { isUp in
-    print("Released:", isUp ? "up" : "down")
+listener.volumeButtonReleased = { direction in
+    print("Released:", direction == .up ? "up" : "down")
 }
 
 try listener.startListening()
