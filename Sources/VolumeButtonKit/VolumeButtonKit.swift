@@ -17,8 +17,21 @@ public enum VolumeButtonDirection {
 }
 
 public final class VolumeButtonListener {
-    public var volumeButtonPressed: ((VolumeButtonDirection) -> Void)?
-    public var volumeButtonReleased: ((VolumeButtonDirection) -> Void)?
+    public var volumeButtonPressed: ((VolumeButtonDirection) -> Void)? {
+        get { volumeButtonPressedHandler }
+        set {
+            volumeButtonPressedHandler = newValue
+            updateListeningStateForCallbacks()
+        }
+    }
+
+    public var volumeButtonReleased: ((VolumeButtonDirection) -> Void)? {
+        get { volumeButtonReleasedHandler }
+        set {
+            volumeButtonReleasedHandler = newValue
+            updateListeningStateForCallbacks()
+        }
+    }
 
     public var showsVolumeUi = false {
         didSet {
@@ -29,8 +42,11 @@ public final class VolumeButtonListener {
     }
 
     private let hiddenVolumeView = MPVolumeView(frame: CGRect(x: -1000, y: -1000, width: 1, height: 1))
+    private var volumeButtonPressedHandler: ((VolumeButtonDirection) -> Void)?
+    private var volumeButtonReleasedHandler: ((VolumeButtonDirection) -> Void)?
     private var previousVolume: Float = 0
     private var isListening = false
+    private var isPaused = false
     private var notificationObserver: NSObjectProtocol?
     private var didBecomeActiveObserver: NSObjectProtocol?
     private let debounceInterval: TimeInterval = 0.25
@@ -46,10 +62,26 @@ public final class VolumeButtonListener {
     }
 
     deinit {
-        try? stopListening()
+        stopListening()
     }
 
-    public func startListening() throws {
+    public func pause() {
+        isPaused = true
+        stopListening()
+    }
+
+    public func resume() throws {
+        guard isPaused else { return }
+        isPaused = false
+        guard hasActiveCallbacks else { return }
+        try startListening()
+    }
+
+    private func startListening() throws {
+        guard !isListening else { return }
+        if !showsVolumeUi, keyWindow() == nil {
+            throw VolumeButtonKitError.noKeyWindow
+        }
         setHiddenVolumeViewVisibility(!showsVolumeUi)
         activateAudioSession()
         previousVolume = AVAudioSession.sharedInstance().outputVolume
@@ -73,7 +105,7 @@ public final class VolumeButtonListener {
         }
     }
 
-    public func stopListening() throws {
+    private func stopListening() {
         guard isListening else { return }
         isListening = false
         releaseWorkItem?.cancel()
@@ -92,7 +124,7 @@ public final class VolumeButtonListener {
     }
 
     public func listening() -> Bool {
-        isListening
+        isListening && !isPaused
     }
 
     public func getVolume() -> Double {
@@ -105,6 +137,23 @@ public final class VolumeButtonListener {
         if isListening {
             previousVolume = vol
         }
+    }
+
+    private var hasActiveCallbacks: Bool {
+        volumeButtonPressedHandler != nil || volumeButtonReleasedHandler != nil
+    }
+
+    private func updateListeningStateForCallbacks() {
+        if hasActiveCallbacks {
+            guard !isPaused else { return }
+            do {
+                try startListening()
+            } catch {
+                print("VolumeButtonKit: Failed to start listening: \(error)")
+            }
+            return
+        }
+        stopListening()
     }
 
     private var volumeSlider: UISlider? {
@@ -158,7 +207,7 @@ public final class VolumeButtonListener {
     }
 
     private func shouldProcessVolumeChange(_ notification: Notification) -> Bool {
-        guard isListening else { return false }
+        guard isListening, !isPaused else { return false }
         if Date() < ignoreVolumeChangesUntil { return false }
         guard let reason = notification.userInfo?[volumeChangeReasonKey] as? String,
               reason == explicitVolumeChangeReason else { return false }
@@ -183,7 +232,7 @@ public final class VolumeButtonListener {
         guard now.timeIntervalSince(lastPressTime) >= debounceInterval else { return }
         lastPressTime = now
         DispatchQueue.main.async { [weak self] in
-            self?.volumeButtonPressed?(button)
+            self?.volumeButtonPressedHandler?(button)
         }
     }
 }

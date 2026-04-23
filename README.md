@@ -37,18 +37,25 @@ dependencies: [
 import VolumeButtonKit
 
 let listener = VolumeButtonListener()
-listener.showsVolumeUi = false
 listener.volumeButtonPressed = { button in
     print("Pressed:", button == .up ? "up" : "down")
 }
 listener.volumeButtonReleased = { button in
     print("Released:", button == .up ? "up" : "down")
 }
+```
 
-try listener.startListening()
+Assigning either callback starts listening automatically.
+
+## Lifecycle
+
+```swift
+listener.pause()        // stops active listening
+try listener.resume()   // restarts listening if a callback is set
 ```
 
 ## Notes
 
 - Internally this package activates an audio session and listens for system volume change notifications.
+- The default for `showsVolumeUi` is `false`.
 - While listening, button presses restore the baseline volume captured at listener start (or after explicit `setVolume` calls while active).
