@@ -1,8 +1,7 @@
 import Testing
 @testable import VolumeButtonKit
 
-@Test func example() async throws {
-    // Write your test here and use APIs like `#expect(...)` to check expected conditions.
-    // Swift Testing Documentation
-    // https://developer.apple.com/documentation/testing
+@Test func separatesDoublePressesFromHeldButtonRepeats() {
+    #expect(!VolumeButtonListener.shouldReleasePendingPress(elapsed: 0.18))
+    #expect(VolumeButtonListener.shouldReleasePendingPress(elapsed: 0.181))
 }
