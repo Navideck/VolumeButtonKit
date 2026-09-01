@@ -51,10 +51,9 @@ public final class VolumeButtonListener {
     private var didBecomeActiveObserver: NSObjectProtocol?
     private let debounceInterval: TimeInterval = 0.05
     private var lastPressTime: Date = .distantPast
-    private let releaseInactivityInterval: TimeInterval = 0.3
+    static let releaseInactivityInterval: TimeInterval = 0.75
     private let programmaticChangeIgnoreInterval: TimeInterval = 0.3
     private var releaseWorkItem: DispatchWorkItem?
-    private var lastPressedButton: VolumeButtonDirection?
     private var ignoreVolumeChangesUntil: Date = .distantPast
 
     public init() {
@@ -196,16 +195,8 @@ public final class VolumeButtonListener {
         let currentVolume = AVAudioSession.sharedInstance().outputVolume
         guard let button = volumeDirection(current: currentVolume, previous: previousVolume) else { return }
 
-        let now = Date()
-        if releaseWorkItem != nil, Self.shouldReleasePendingPress(elapsed: now.timeIntervalSince(lastPressTime)) {
-            releaseWorkItem?.cancel()
-            volumeButtonReleasedHandler?(lastPressedButton ?? button)
-            releaseWorkItem = nil
-        }
-
         recordPress(button: button)
         releaseWorkItem?.cancel()
-        lastPressedButton = button
         let buttonForRelease = button
         let workItem = DispatchWorkItem { [weak self] in
             guard let self, self.isListening else { return }
@@ -214,11 +205,7 @@ public final class VolumeButtonListener {
             self.setSystemVolume(self.previousVolume)
         }
         releaseWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + releaseInactivityInterval, execute: workItem)
-    }
-
-    static func shouldReleasePendingPress(elapsed: TimeInterval) -> Bool {
-        elapsed > 0.18
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.releaseInactivityInterval, execute: workItem)
     }
 
     private func shouldProcessVolumeChange(_ notification: Notification) -> Bool {

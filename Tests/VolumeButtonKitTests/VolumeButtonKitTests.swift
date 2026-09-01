@@ -1,7 +1,6 @@
 import Testing
 @testable import VolumeButtonKit
 
-@Test func separatesDoublePressesFromHeldButtonRepeats() {
-    #expect(!VolumeButtonListener.shouldReleasePendingPress(elapsed: 0.18))
-    #expect(VolumeButtonListener.shouldReleasePendingPress(elapsed: 0.181))
+@Test func releaseWindowBridgesInitialButtonRepeatDelay() {
+    #expect(VolumeButtonListener.releaseInactivityInterval >= 0.7)
 }
