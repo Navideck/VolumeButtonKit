@@ -192,7 +192,9 @@ public final class VolumeButtonListener {
 
     private func handleSystemVolumeDidChange(_ notification: Notification) {
         guard shouldProcessVolumeChange(notification) else { return }
-        let currentVolume = AVAudioSession.sharedInstance().outputVolume
+        let currentVolume = (notification.userInfo?["Volume"] as? Float)
+            ?? (notification.userInfo?["AVSystemController_AudioVolumeNotificationParameter"] as? Float)
+            ?? AVAudioSession.sharedInstance().outputVolume
         guard let button = volumeDirection(current: currentVolume, previous: previousVolume) else { return }
 
         recordPress(button: button)
@@ -202,7 +204,11 @@ public final class VolumeButtonListener {
             guard let self, self.isListening else { return }
             self.releaseWorkItem = nil
             self.volumeButtonReleasedHandler?(buttonForRelease)
-            self.setSystemVolume(self.previousVolume)
+            if !self.showsVolumeUi && self.volumeSlider != nil {
+                self.setSystemVolume(self.previousVolume)
+            } else {
+                self.previousVolume = currentVolume
+            }
         }
         releaseWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.releaseInactivityInterval, execute: workItem)
@@ -211,8 +217,9 @@ public final class VolumeButtonListener {
     private func shouldProcessVolumeChange(_ notification: Notification) -> Bool {
         guard isListening, !isPaused else { return false }
         if Date() < ignoreVolumeChangesUntil { return false }
-        guard let reason = notification.userInfo?[volumeChangeReasonKey] as? String,
-              reason == explicitVolumeChangeReason else { return false }
+        let reason = (notification.userInfo?[volumeChangeReasonKey] as? String)
+            ?? (notification.userInfo?["AVSystemController_AudioVolumeChangeReasonNotificationParameter"] as? String)
+        guard reason == explicitVolumeChangeReason else { return false }
         return true
     }
 
